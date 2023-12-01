@@ -10,7 +10,7 @@ let seqToCalibration sq =
 
 let parseLine s = 
     Seq.filter System.Char.IsAsciiDigit s
-        |> Seq.map (fun c -> string c |> int)
+        |> Seq.map (string >> int)
         |> seqToCalibration
         
 let rec parseLine2Helper (s: string) =
