@@ -36,7 +36,7 @@ let lines (stream: System.IO.Stream) =
 
 let resolveFilename (s: string): System.IO.Stream =
     if s = "-" 
-        then System.Console.OpenStandardInput(1)
+        then System.Console.OpenStandardInput 1
         else System.IO.File.OpenRead s
         
 let resolveParser (s: string): string -> int =
