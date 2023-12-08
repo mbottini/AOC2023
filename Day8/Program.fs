@@ -35,13 +35,6 @@ let parseFile ls =
     | Some(x, xs) -> (Seq.map parseDirection x |> Seq.toList, xs |> Seq.map parseLine |> createGraph)
     | None -> failwith "parse error"
 
-let peek f xs =
-    seq {
-        for x in xs do
-            f x
-            yield x
-    }
-
 let rec traverseGraph' pred dirs (graph: System.Collections.Generic.Dictionary<string, GraphNode>) start =
     let mutable curr = start
     let mutable count = 0
@@ -53,7 +46,11 @@ let rec traverseGraph' pred dirs (graph: System.Collections.Generic.Dictionary<s
 
         count <- count + 1
 
-    peek peeker dirs |> Seq.takeWhile (fun _ -> not (pred curr)) |> Seq.length
+    Seq.map peeker dirs
+    |> Seq.takeWhile (fun _ -> not (pred curr))
+    |> Seq.fold (fun _ _ -> ()) ()
+
+    count
 
 let rec cycle xs =
     seq {
