@@ -35,7 +35,7 @@ let parseFile ls =
     | Some(x, xs) -> (Seq.map parseDirection x |> Seq.toList, xs |> Seq.map parseLine |> createGraph)
     | None -> failwith "parse error"
 
-let rec traverseGraph' pred dirs (graph: System.Collections.Generic.Dictionary<string, GraphNode>) start =
+let traverseGraph' pred dirs (graph: System.Collections.Generic.Dictionary<string, GraphNode>) start =
     let mutable curr = start
     let mutable count = 0
 
