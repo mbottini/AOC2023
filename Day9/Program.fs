@@ -2,9 +2,7 @@
 open Prelude.PogSeq
 
 let nextSeq xs =
-    Seq.windowed 2 xs
-    |> Seq.map (fun arr -> (arr[0], arr[1]))
-    |> Seq.map (uncurry (flip (-)))
+    Seq.pairwise xs |> Seq.map (uncurry (flip (-)))
 
 let allSeqs xs =
     iterate nextSeq xs |> Seq.takeWhile (Seq.forall ((=) 0) >> not)
