@@ -4,7 +4,7 @@ open Prelude.PogSeq
 let nextSeq xs =
     Seq.windowed 2 xs
     |> Seq.map (fun arr -> (arr[0], arr[1]))
-    |> Seq.map (fun (x, y) -> y - x)
+    |> Seq.map (uncurry (flip (-)))
 
 let allSeqs xs =
     iterate nextSeq xs |> Seq.takeWhile (Seq.forall ((=) 0) >> not)
@@ -13,7 +13,7 @@ let processSeqs1 xss =
     Seq.map Seq.last xss |> Seq.rev |> Seq.scan (+) 0 |> Seq.last
 
 let processSeqs2 xss =
-    Seq.map Seq.head xss |> Seq.rev |> Seq.scan (fun acc x -> x - acc) 0 |> Seq.last
+    Seq.map Seq.head xss |> Seq.rev |> Seq.scan (flip (-)) 0 |> Seq.last
 
 let parseFile ls = Seq.map (split ' ' >> Seq.map int) ls
 
