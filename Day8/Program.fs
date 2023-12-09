@@ -36,21 +36,12 @@ let parseFile ls =
     | None -> failwith "parse error"
 
 let traverseGraph' pred dirs (graph: System.Collections.Generic.Dictionary<string, GraphNode>) start =
-    let mutable curr = start
-    let mutable count = 0
-
-    let peeker d =
+    let traverser curr d =
         match d with
-        | L -> curr <- graph[curr].left
-        | R -> curr <- graph[curr].right
+        | L -> graph[curr].left
+        | R -> graph[curr].right in
 
-        count <- count + 1
-
-    Seq.map peeker dirs
-    |> Seq.takeWhile (fun _ -> not (pred curr))
-    |> Seq.fold (fun _ _ -> ()) ()
-
-    count
+    Seq.scan traverser start dirs |> Seq.takeWhile (pred >> not) |> Seq.length
 
 let rec cycle xs =
     seq {
