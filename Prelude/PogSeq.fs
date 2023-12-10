@@ -101,3 +101,9 @@ module PogSeq =
     let concat = Seq.concat
 
     let length = Seq.length
+
+    let cons x xs =
+        seq {
+            yield x
+            yield! xs
+        }
