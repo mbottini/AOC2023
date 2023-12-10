@@ -107,3 +107,16 @@ module PogSeq =
             yield x
             yield! xs
         }
+
+    let peek f xs =
+        seq {
+            for x in xs do
+                f x
+                yield x
+        }
+
+    let frequencies xs =
+        let increment x =
+            Option.orElse (Some 0) x |> Option.map ((+) 1)
+
+        Seq.fold (fun m x -> Map.change x increment m) Map.empty xs

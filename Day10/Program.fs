@@ -24,15 +24,6 @@ let behind dir =
     | E -> W
     | W -> E
 
-let left dir =
-    match dir with
-    | N -> W
-    | W -> S
-    | S -> E
-    | E -> N
-
-let right = left >> behind
-
 let incrementor dir row col =
     match dir with
     | N -> (row - 1, col)
@@ -122,30 +113,38 @@ let allNeighbors (row, col) =
 let withinBounds g (row, col) =
     Array.tryItem row g |> Option.bind (Array.tryItem col) |> Option.isSome
 
-let leftNeighbor dir pos = uncurry (incrementor (left dir)) pos
+let drawRay g (pos) =
+    iterate (fun (row, col) -> (row + 1, col)) pos |> Seq.takeWhile (withinBounds g)
 
-let rightNeighbor dir pos = uncurry (incrementor (right dir)) pos
+// S is an EW in my puzzle. This is a wretched hack
+let goesLeft pipe =
+    List.contains pipe [ NW; SW; EW; Start ]
 
-let floodFill g pipes start =
-    let nextStep curr =
-        Seq.filter ((flip Set.contains) pipes >> not) curr
-        |> Seq.collect allNeighbors
-        |> Seq.filter (withinBounds g)
-        |> Seq.fold (flip Set.add) curr
-        |> (flip Set.difference) pipes
+let goesRight pipe =
+    List.contains pipe [ NE; SE; EW; Start ]
 
-    iterate nextStep start |> Seq.pairwise |> Seq.find (uncurry (=)) |> snd
+let insidePipes g pipes pos =
+    if Set.contains pos pipes then
+        false
+    else
+        let ps =
+            drawRay g pos
+            |> Seq.filter (fun x -> Set.contains x pipes)
+            |> Seq.map (uncurry (lookup g))
+            |> Seq.toList
 
-let floodLeft g =
-    let sq = p1 g
-    floodFill g (Seq.map snd sq |> Set) (Seq.map (uncurry leftNeighbor) sq |> Set)
+        let leftPipesCount = List.filter goesLeft ps |> List.length
+        let rightPipesCount = List.filter goesRight ps |> List.length
+        min leftPipesCount rightPipesCount |> fun x -> x % 2 = 1
 
-let floodRight g =
-    let sq = p1 g
-    floodFill g (Seq.map snd sq |> Set) (Seq.map (uncurry rightNeighbor) sq |> Set)
+
+let pointsContained g pipes =
+    Seq.allPairs (seq { 0 .. Array.length g - 1 }) (seq { 0 .. Array.length g[0] - 1 })
+    |> Seq.filter (insidePipes g pipes)
 
 let p2 g =
-    min (Seq.length (floodRight g)) (Seq.length (floodLeft g))
+    let pipes = p1 g |> Seq.map snd |> Set
+    pointsContained g pipes |> Seq.length
 
 [<EntryPoint>]
 let main args =
