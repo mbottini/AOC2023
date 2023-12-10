@@ -134,8 +134,7 @@ let insidePipes g pipes pos =
             |> Seq.toList
 
         let leftPipesCount = List.filter goesLeft ps |> List.length
-        let rightPipesCount = List.filter goesRight ps |> List.length
-        min leftPipesCount rightPipesCount |> fun x -> x % 2 = 1
+        leftPipesCount % 2 = 1
 
 
 let pointsContained g pipes =
