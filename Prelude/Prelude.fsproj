@@ -10,4 +10,8 @@
     <Compile Include="PogSeq.fs" />
   </ItemGroup>
 
+  <Target Name="PostClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)" /><!-- obj -->
+    <RemoveDir Directories="$(BaseOutputPath)" /><!-- bin -->
+  </Target>
 </Project>
