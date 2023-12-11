@@ -1,62 +1,73 @@
 ﻿open Prelude.Prelude
 open Prelude.PogSeq
 
+type Galaxy =
+    { emptyRows: Set<int64>
+      emptyCols: Set<int64>
+      points: array<int64 * int64> }
+
 let emptySpace sq = Seq.forall ((=) '.') sq
 
-let resolveGalaxy1 ls =
+let resolveGalaxy (ls: seq<string>) : Galaxy =
     let lst = Seq.toList ls
 
     let emptyRows =
-        enumerate 0 lst |> Seq.filter (snd >> emptySpace) |> Seq.map fst |> Set
+        enumerate 0 lst
+        |> Seq.filter (snd >> emptySpace)
+        |> Seq.map (fst >> int64)
+        |> Set
 
     let emptyCols =
         Seq.transpose lst
         |> enumerate 0
         |> Seq.filter (snd >> emptySpace)
-        |> Seq.map fst
+        |> Seq.map (fst >> int64)
         |> Set
 
-    seq {
-        for (y, row) in enumerate 0 lst do
-            let curr =
-                seq {
-                    for (x, c) in enumerate 0 row do
-                        if Set.contains x emptyCols then
-                            yield c
-                            yield c
-                        else
-                            yield c
-                }
+    let points =
+        seq {
+            for (y, row) in enumerate 0 lst do
+                for (x, c) in enumerate 0 row do
+                    if c = '#' then
+                        yield (int64 y, int64 x)
+        }
+        |> Seq.toArray
 
-            if Set.contains y emptyRows then
-                yield curr
-                yield curr
-            else
-                yield curr
-    }
-    |> Seq.map Seq.toArray
-    |> Seq.toArray
+    { emptyRows = emptyRows
+      emptyCols = emptyCols
+      points = points }
 
-let coords arr =
-    seq {
-        for (y, row) in enumerate 0 arr do
-            for (x, c) in enumerate 0 row do
-                if c = '#' then
-                    yield (y, x) // row, col for the purposes of checking the array
-    }
-    |> Seq.toArray
+let allSegments g =
+    Seq.allPairs g.points g.points
+    |> Seq.filter (fun (p1, p2) -> p1 < p2)
+    |> Seq.toList
 
-let allSegments points =
-    Seq.allPairs points points |> Seq.filter (fun (p1, p2) -> p1 < p2) |> Seq.toList
+let getRange x y = seq { min x y + 1L .. max x y }
 
-let manhattan ((y1, x1), (y2, x2)) = (abs (y2 - y1)) + (abs (x2 - x1))
+let manhattan g multiplier ((y1, x1), (y2, x2)) =
+    (getRange y1 y2
+     |> Seq.map (fun row -> if Set.contains row g.emptyRows then multiplier else 1L)
+     |> Seq.sum)
+    + (getRange x1 x2
+       |> Seq.map (fun col -> if Set.contains col g.emptyCols then multiplier else 1L)
+       |> Seq.sum)
 
-let p1 (ls: seq<string>) =
-    resolveGalaxy1 ls |> coords |> allSegments |> Seq.map manhattan |> Seq.sum
+
+let processSeq multiplier (ls: seq<string>) =
+    let g = resolveGalaxy ls
+    allSegments g |> Seq.map (manhattan g multiplier) |> Seq.sum
+
+let resolveMultiplier flag =
+    match flag with
+    | "-p1" -> 2L
+    | "-p2" -> 1000000L
+    | _ -> failwith "flag error"
+
 
 [<EntryPoint>]
 let main args =
     match args with
-    | [| flag; filename |] -> slurpOrStdin filename |> p1 |> printfn "%A"
+    | [| flag; filename |] -> slurpOrStdin filename |> processSeq (resolveMultiplier flag) |> printfn "%d"
+    | _ -> printfn "%s" "main error"
 
     0
