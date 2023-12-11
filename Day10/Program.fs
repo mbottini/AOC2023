@@ -117,13 +117,15 @@ let drawRay g (pos) =
     iterate (fun (row, col) -> (row + 1, col)) pos |> Seq.takeWhile (withinBounds g)
 
 // S is an EW in my puzzle. This is a wretched hack
-let goesLeft pipe =
-    List.contains pipe [ NW; SW; EW; Start ]
+let goesLeft startPipe pipe =
+    let leftPipes = [ NW; SW; EW ]
+    List.contains pipe (leftPipes @ (if List.contains startPipe leftPipes then [ Start ] else []))
 
-let goesRight pipe =
-    List.contains pipe [ NE; SE; EW; Start ]
+let goesRight startPipe pipe =
+    let rightPipes = [ NE; SE; EW ]
+    List.contains pipe (rightPipes @ (if List.contains startPipe rightPipes then [ Start ] else []))
 
-let insidePipes g pipes pos =
+let insidePipes g startPipe pipes pos =
     if Set.contains pos pipes then
         false
     else
@@ -133,17 +135,35 @@ let insidePipes g pipes pos =
             |> Seq.map (uncurry (lookup g))
             |> Seq.toList
 
-        let leftPipesCount = List.filter goesLeft ps |> List.length
+        let leftPipesCount = List.filter (goesLeft startPipe) ps |> List.length
         leftPipesCount % 2 = 1
 
 
-let pointsContained g pipes =
+let pointsContained g startPipe pipes =
     Seq.allPairs (seq { 0 .. Array.length g - 1 }) (seq { 0 .. Array.length g[0] - 1 })
-    |> Seq.filter (insidePipes g pipes)
+    |> Seq.filter (insidePipes g startPipe pipes)
+
+let deriveStart (pipes: list<Direction * (int * int)>) =
+    match ((List.head >> fst >> behind) pipes, (List.tail >> List.head >> fst) pipes) with
+    | (S, E) -> SE
+    | (E, S) -> SE
+    | (S, W) -> SW
+    | (W, S) -> SW
+    | (N, E) -> NE
+    | (E, N) -> NE
+    | (N, W) -> NW
+    | (W, N) -> NW
+    | (N, S) -> NS
+    | (S, N) -> NS
+    | (E, W) -> EW
+    | (W, E) -> EW
+    | _ -> failwith "Something went very wrong"
 
 let p2 g =
-    let pipes = p1 g |> Seq.map snd |> Set
-    pointsContained g pipes |> Seq.length
+    let pipes = p1 g
+
+    pointsContained g ((Seq.toList >> deriveStart) pipes) ((Seq.map snd >> Set) pipes)
+    |> Seq.length
 
 [<EntryPoint>]
 let main args =
