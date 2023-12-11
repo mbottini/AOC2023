@@ -144,19 +144,16 @@ let pointsContained g startPipe pipes =
     |> Seq.filter (insidePipes g startPipe pipes)
 
 let deriveStart (pipes: list<Direction * (int * int)>) =
-    match ((List.head >> fst >> behind) pipes, (List.tail >> List.head >> fst) pipes) with
-    | (S, E) -> SE
-    | (E, S) -> SE
-    | (S, W) -> SW
-    | (W, S) -> SW
-    | (N, E) -> NE
-    | (E, N) -> NE
-    | (N, W) -> NW
-    | (W, N) -> NW
-    | (N, S) -> NS
-    | (S, N) -> NS
-    | (E, W) -> EW
-    | (W, E) -> EW
+    match
+        [ (List.head >> fst >> behind) pipes; (List.tail >> List.head >> fst) pipes ]
+        |> List.sort
+    with
+    | [ S; E ] -> SE
+    | [ S; W ] -> SW
+    | [ N; E ] -> NE
+    | [ N; W ] -> NW
+    | [ N; S ] -> NS
+    | [ E; W ] -> EW
     | _ -> failwith "Something went very wrong"
 
 let p2 g =
