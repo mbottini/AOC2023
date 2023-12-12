@@ -1,6 +1,8 @@
 ﻿open Prelude.Prelude
 open Prelude.PogSeq
 
+open FSharp.Collections.ParallelSeq
+
 type Spring =
     | Good
     | Bad
@@ -72,7 +74,7 @@ let main args =
     | [| flag; filename |] ->
         slurpOrStdin filename
         |> Seq.map (parseLine (resolveMultiplier flag))
-        |> Seq.map lineCombos
+        |> PSeq.map lineCombos
         |> Seq.sum
         |> printfn "%d"
     | _ -> failwith "main error"
