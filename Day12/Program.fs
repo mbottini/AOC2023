@@ -6,11 +6,9 @@ type Spring =
     | Bad
     | Unknown
 
-type Block = list<Spring>
-
 type Line =
-    { blocks: list<Block>
-      contigs: list<int> }
+    { springs: list<Spring>
+      blocks: list<int> }
 
 let parseChar c =
     match c with
@@ -22,59 +20,59 @@ let parseChar c =
 let parseNums s =
     split ',' s |> Seq.map int |> Seq.toList
 
-let parseBlocks s =
-    Seq.map parseChar s
-    |> groupby ((<>) Good)
-    |> Seq.filter fst
-    |> Seq.map snd
-    |> Seq.toList
-
-let parseLine s =
+let parseLine multiplier s =
     match split ' ' s with
     | [| springs; nums |] ->
-        { blocks = parseBlocks springs
-          contigs = parseNums nums }
+        { springs =
+            intersperse "?" (Seq.replicate multiplier springs)
+            |> Seq.concat
+            |> System.String.Concat
+            |> Seq.map parseChar
+            |> Seq.toList
+          blocks =
+            intersperse "," (Seq.replicate multiplier nums)
+            |> Seq.concat
+            |> System.String.Concat
+            |> parseNums }
     | _ -> failwith "parse error"
 
-let rec blockCombos block contigs =
-    let helper bs cs =
-        match bs with
-        | Unknown :: rest -> blockCombos rest cs
-        | [] -> [ ([], cs) ]
-        | _ -> []
+let rec springCombos (memo: Map<list<Spring> * list<int>, int64> ref) springs blocks =
+    let dropper sps bs =
+        match sps, bs with
+        | s :: rest, bs when List.contains s [ Unknown; Good ] -> springCombos memo rest bs
+        | [], [] -> 1L
+        | _ -> 0L
 
-    helper block contigs
-    @ match contigs with
-      | c :: cs ->
-          if c <= List.length block then
-              match List.skip c block with
-              | Unknown :: xs -> List.map (fun (ns, ys) -> (c :: ns, ys)) (blockCombos xs cs)
-              | [] -> [ ([ c ], cs) ]
-              | _ -> []
-          else
-              []
-      | [] -> []
+    let rec keeper sps bs =
+        match sps, bs with
+        | [], (0 :: remBlocks) -> springCombos memo sps remBlocks
+        | s :: rest, 0 :: remBlocks when List.contains s [ Unknown; Good ] -> springCombos memo rest remBlocks
+        | s :: rest, block :: remBlocks when List.contains s [ Unknown; Bad ] -> keeper rest (block - 1 :: remBlocks)
+        | _ -> 0L
 
-let rec blockCombosMultiple blocks contigs =
-    match (blocks, contigs) with
-    | [], [] -> [ [] ]
-    | (b :: bs), contigs ->
-        seq {
-            for (lst, contigs') in blockCombos b contigs do
-                yield! Seq.map ((@) lst) (blockCombosMultiple bs contigs')
-        }
-        |> Seq.toList
-    | _ -> []
+    match Map.tryFind (springs, blocks) memo.Value with
+    | Some x -> x
+    | None ->
+        let total = dropper springs blocks + keeper springs blocks
+        memo.Value <- Map.add (springs, blocks) total memo.Value
+        total
 
-let lineCombos l = blockCombosMultiple l.blocks l.contigs
+let lineCombos l =
+    springCombos (ref Map.empty) l.springs l.blocks
+
+let resolveMultiplier flag =
+    match flag with
+    | "-p1" -> 1
+    | "-p2" -> 5
+    | _ -> failwith "flag error"
 
 [<EntryPoint>]
 let main args =
     match args with
     | [| flag; filename |] ->
         slurpOrStdin filename
-        |> Seq.map parseLine
-        |> Seq.map (lineCombos >> Seq.length)
+        |> Seq.map (parseLine (resolveMultiplier flag))
+        |> Seq.map lineCombos
         |> Seq.sum
         |> printfn "%d"
     | _ -> failwith "main error"
