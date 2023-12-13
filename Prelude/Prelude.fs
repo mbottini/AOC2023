@@ -18,3 +18,12 @@ module Prelude =
 
     let allMatches regex matcher s =
         (System.Text.RegularExpressions.Regex regex).Matches s |> Seq.map matcher
+
+    let rec zip xs ys =
+        match xs, ys with
+        | x :: xs', y :: ys' ->
+            seq {
+                yield (x, y)
+                yield! zip xs' ys'
+            }
+        | _ -> Seq.empty
