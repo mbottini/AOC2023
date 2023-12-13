@@ -399,4 +399,4 @@ FodyWeavers.xsd
 
 .vscode
 
-*/input.txt
+*/*.txt
