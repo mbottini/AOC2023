@@ -15,7 +15,7 @@ let hash (s: string) =
     let helper curr c = (curr + int c) * 17 % 256
     Seq.fold helper 0 s
 
-let hashLine = split ',' >> Seq.map hash >> Seq.sum
+let hashLine s = split ',' s |> Seq.map hash |> Seq.sum
 
 let parseAddStep s =
     match split '=' s with
