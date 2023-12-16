@@ -1,6 +1,8 @@
 ﻿open Prelude.Prelude
 open Prelude.PogSeq
 
+open FSharp.Collections.ParallelSeq
+
 type Tile =
     | Space
     | EWSplitter
@@ -148,8 +150,8 @@ let p2 board =
     allStartingPoints board
     |> enumerate 1
     |> Seq.map snd
-    |> Seq.map (p1 board)
-    |> Seq.max
+    |> PSeq.map (p1 board)
+    |> PSeq.max
 
 [<EntryPoint>]
 let main args =
