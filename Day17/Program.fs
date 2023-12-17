@@ -87,14 +87,14 @@ let neighbors start ``end`` board n =
 let accessHeadValue board n =
     List.head n |> snd |> uncurry (getLocation board)
 
-let rec nextStep neighborFunc board visited (neighborHeap: FSharpx.Collections.Heap<int * Node>) =
+let rec nextStep neighborFunc board costMap (neighborHeap: FSharpx.Collections.Heap<int * Node>) =
     match pop neighborHeap with
     | Some((cost, (((_, coord) :: _) as n)), hp') ->
-        if Map.containsKey (getChainNode n |> Seq.toList, coord) visited then
-            nextStep neighborFunc board visited hp'
+        if Map.containsKey (getChainNode n |> Seq.toList, coord) costMap then
+            nextStep neighborFunc board costMap hp'
         else
             Some(
-                (Map.add (getChainNode n |> Seq.toList, coord) cost visited,
+                (Map.add (getChainNode n |> Seq.toList, coord) cost costMap,
                  pushAll
                      (neighborFunc board n
                       |> List.map (fun n' -> (accessHeadValue board n' + cost, n')))
