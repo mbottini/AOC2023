@@ -52,19 +52,11 @@ let emptyHeap: Heap = FSharpx.Collections.Heap.empty false
 
 let push = FSharpx.Collections.Heap.insert
 
-let singleton x = emptyHeap |> push x
-
 let pushAll xs hp = Seq.fold (flip push) hp xs
 
 let pop = FSharpx.Collections.Heap.tryUncons
 
 let neighborCoord coord dir = directAdd (getVector dir) coord
-
-let validDirections n =
-    match n with
-    | (d1, _) :: (d2, _) :: (d3, _) :: _ when d1 = d2 && d2 = d3 -> otherDirs d1 |> List.filter ((<>) d1)
-    | (d1, _) :: _ -> otherDirs d1
-    | _ -> failwith "empty list should never happen!"
 
 let getChain sq =
     match uncons sq with
@@ -75,28 +67,19 @@ let getChainNode n = Seq.map fst n |> getChain
 
 let getChainNodeLength n = getChainNode n |> Seq.length
 
-let validDirections2 n =
+let validDirections start ``end`` n =
     let chainLength = getChainNodeLength n
 
     match n with
-    | (d, _) :: _ when chainLength >= 4 && chainLength < 10 -> otherDirs d
-    | (d, _) :: _ when chainLength < 4 -> [ d ]
+    | (d, _) :: _ when chainLength >= start && chainLength < ``end`` -> otherDirs d
+    | (d, _) :: _ when chainLength < start -> [ d ]
     | (d, _) :: _ -> otherDirs d |> List.filter ((<>) d)
     | _ -> failwith "empty list should never happen!"
 
-
-let neighbors board n =
+let neighbors start ``end`` board n =
     match n with
     | (_, coord) :: _ ->
-        validDirections n
-        |> List.map (fun d -> (d, neighborCoord coord d) :: n)
-        |> List.filter (List.head >> snd >> (uncurry (validLocation board)))
-    | _ -> failwith "empty list should never happen!"
-
-let neighbors2 board n =
-    match n with
-    | (_, coord) :: _ ->
-        validDirections2 n
+        validDirections start ``end`` n
         |> List.map (fun d -> (d, neighborCoord coord d) :: n)
         |> List.filter (List.head >> snd >> (uncurry (validLocation board)))
     | _ -> failwith "empty list should never happen!"
@@ -104,46 +87,18 @@ let neighbors2 board n =
 let accessHeadValue board n =
     List.head n |> snd |> uncurry (getLocation board)
 
-let getPredDirs count (n: Node) = List.truncate count n |> List.map fst
-
-let rec nextStep board visited (neighborHeap: FSharpx.Collections.Heap<int * Node>) =
-    match pop neighborHeap with
-    | Some((cost, (((_, coord) :: _) as n)), hp') ->
-        if Map.containsKey (getPredDirs 3 n, coord) visited then
-            nextStep board visited hp'
-        else
-            Some(
-                (Map.add (getPredDirs 3 n, coord) cost visited,
-                 pushAll (neighbors board n |> List.map (fun n' -> (accessHeadValue board n' + cost, n'))) hp')
-            )
-    | _ -> None
-
-let rec nextStep3 (board: array<array<int>>) visited neighborHeap =
-    match pop neighborHeap with
-    | Some((cost, (((_, coord) :: _) as n)), _) when
-        coord = (board.Length - 1, board[0].Length - 1) && getChainNodeLength n >= 4
-        ->
-        cost
-    | Some((cost, (((_, coord) :: _) as n)), hp') ->
-        if Map.containsKey (getChainNode n |> Seq.toList, coord) visited then
-            nextStep3 board visited hp'
-        else
-            nextStep3
-                board
-                (Map.add (getChainNode n |> Seq.toList, coord) cost visited)
-                (pushAll (neighbors2 board n |> List.map (fun n' -> (accessHeadValue board n' + cost, n'))) hp')
-
-    | _ -> failwith "heap exhaustion without hitting the end"
-
-let rec nextStep2 (board: array<array<int>>) visited (neighborHeap: FSharpx.Collections.Heap<int * Node>) =
+let rec nextStep neighborFunc board visited (neighborHeap: FSharpx.Collections.Heap<int * Node>) =
     match pop neighborHeap with
     | Some((cost, (((_, coord) :: _) as n)), hp') ->
         if Map.containsKey (getChainNode n |> Seq.toList, coord) visited then
-            nextStep2 board visited hp'
+            nextStep neighborFunc board visited hp'
         else
             Some(
                 (Map.add (getChainNode n |> Seq.toList, coord) cost visited,
-                 pushAll (neighbors2 board n |> List.map (fun n' -> (accessHeadValue board n' + cost, n'))) hp')
+                 pushAll
+                     (neighborFunc board n
+                      |> List.map (fun n' -> (accessHeadValue board n' + cost, n')))
+                     hp')
             )
     | _ -> None
 
@@ -154,8 +109,8 @@ let initialHeap board =
 
 let (initialMap: Map<(List<Direction> * (int * int)), int>) = Map.empty
 
-let p1 board =
-    iterate (Option.bind (uncurry (nextStep board))) (Some(initialMap, initialHeap board))
+let findSmallestPath start ``end`` board =
+    iterate (Option.bind (uncurry (nextStep (neighbors start ``end``) board))) (Some(initialMap, initialHeap board))
     |> Seq.takeWhile Option.isSome
     |> Seq.collect Option.toList
     |> Seq.last
@@ -165,22 +120,8 @@ let p1 board =
     |> Seq.map snd
     |> Seq.min
 
-(*
-let p2 board =
-    nextStep2 board initialMap (initialHeap board)
-*)
-
-let p2 board =
-    iterate (Option.bind (uncurry (nextStep2 board))) (Some(initialMap, initialHeap board))
-    |> Seq.takeWhile Option.isSome
-    |> Seq.collect Option.toList
-    |> Seq.last
-    |> fst
-    |> Map.toSeq
-    |> Seq.filter (fun ((n, coord), _) -> coord = (board.Length - 1, board[0].Length - 1) && List.length n >= 4)
-    |> Seq.map snd
-    |> Seq.min
-
+let p1 = findSmallestPath 1 3
+let p2 = findSmallestPath 4 10
 
 #if INTERACTIVE
 let board = slurpOrStdin "Day17/test1.txt" |> parseFile
