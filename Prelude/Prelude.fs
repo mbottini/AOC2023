@@ -16,6 +16,9 @@ module Prelude =
             ||| System.StringSplitOptions.TrimEntries
         )
 
+    let reMatch regex matcher s =
+        (System.Text.RegularExpressions.Regex regex).Match s |> matcher
+
     let allMatches regex matcher s =
         (System.Text.RegularExpressions.Regex regex).Matches s |> Seq.map matcher
 
