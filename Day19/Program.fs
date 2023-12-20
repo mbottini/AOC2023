@@ -184,7 +184,7 @@ let runWorkflow m init =
     |> Seq.head
 
 let p1 m prs =
-    runWorkflow m prs |> Seq.map (snd >> prSum) |> Seq.sum
+    runWorkflow m prs |> List.map (snd >> prSum) |> List.sum
 
 let p2 m init =
     runWorkflow m init |> List.map (snd >> prProduct) |> List.sum
