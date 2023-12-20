@@ -72,17 +72,19 @@ let parseAttr: Parser<char, string> = anyOf "xmas"
 let parseComparison: Parser<Comparison, string> = anyOf "<>" |>> Comparison.Parse
 
 let parseRule: Parser<Rule, string> =
-    pipe4
-        parseAttr
-        parseComparison
-        pint32
-        (pchar ':' >>. many1Chars asciiLetter |>> Result.Parse)
-        (fun attr comp x res ->
+    parse {
+        let! attr = parseAttr
+        let! cmp = parseComparison
+        let! x = pint32
+        let! res = pchar ':' >>. many1Chars asciiLetter |>> Result.Parse
+
+        return
             ComparisonRule
                 { attribute = attr
-                  comparison = comp
+                  comparison = cmp
                   value = x
-                  ifPass = res })
+                  ifPass = res }
+    }
 
 let parseDefault: Parser<Rule, string> =
     many1Chars asciiLetter
