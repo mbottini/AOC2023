@@ -140,10 +140,10 @@ let applyMultipleRules rules partRange =
 
     helper rules partRange []
 
-let parseSteps2 = sepBy1 parseStep (pchar ',') |>> applyMultipleRules
+let parseSteps = sepBy1 parseStep (pchar ',') |>> applyMultipleRules
 
 let parseWorkflow =
-    tuple2 (many1Chars asciiLower) (between (pchar '{') (pchar '}') parseSteps2)
+    tuple2 (many1Chars asciiLower) (between (pchar '{') (pchar '}') parseSteps)
 
 let parseWorkflowLine s =
     match runParserOnString parseWorkflow "" "" s with
