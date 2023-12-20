@@ -3,20 +3,6 @@ open Prelude.PogSeq
 
 open FParsec
 
-type Attribute =
-    | X
-    | M
-    | A
-    | S
-
-    static member Parse c =
-        match System.Char.ToLower c with
-        | 'x' -> X
-        | 'm' -> M
-        | 'a' -> A
-        | 's' -> S
-        | _ -> failwith "parse error"
-
 type Comparison =
     | LT
     | GT
@@ -32,29 +18,18 @@ type IntRange =
       ``end``: int64 }
 
     static member Singleton x = { start = x; ``end`` = x }
+    member this.Cardinality = this.``end`` - this.start + 1L
 
-let cardinality { start = start; ``end`` = ``end`` } = ``end`` - start + 1L
+type PartRange = Map<char, IntRange>
 
-type PartRange =
-    { xRng: IntRange
-      mRng: IntRange
-      aRng: IntRange
-      sRng: IntRange }
+let prProduct (pr: PartRange) =
+    Map.values pr |> Seq.map (_.Cardinality) |> Seq.fold (*) 1L
 
-    member this.Product() =
-        List.map (cardinality >> int64) [ this.xRng; this.mRng; this.aRng; this.sRng ]
-        |> Seq.fold (*) 1L
+let prSum (pr: PartRange) =
+    Map.values pr |> Seq.map (_.start) |> Seq.sum
 
-    member this.PartSum() =
-        List.map (_.start) [ this.xRng; this.mRng; this.aRng; this.sRng ]
-        |> Seq.fold (+) 0L
-        |> int64
-
-let fullRange =
-    { xRng = { start = 1; ``end`` = 4000 }
-      mRng = { start = 1; ``end`` = 4000 }
-      aRng = { start = 1; ``end`` = 4000 }
-      sRng = { start = 1; ``end`` = 4000 } }
+let fullRange: PartRange =
+    Seq.zip "xmas" (repeat { start = 1; ``end`` = 4000 }) |> Map
 
 type Result =
     | Continue of string
@@ -77,7 +52,7 @@ let isRejected res =
     | _ -> false
 
 type ComparisonRule =
-    { attribute: Attribute
+    { attribute: char
       comparison: Comparison
       value: int
       ifPass: Result }
@@ -93,7 +68,7 @@ let comparisonFunc c =
     | LT -> (<)
     | GT -> (>)
 
-let parseAttr: Parser<Attribute, string> = anyOf "xmas" |>> Attribute.Parse
+let parseAttr: Parser<char, string> = anyOf "xmas"
 let parseComparison: Parser<Comparison, string> = anyOf "<>" |>> Comparison.Parse
 
 let parseRule: Parser<Rule, string> =
@@ -129,20 +104,9 @@ let clampRange cmp v { start = start; ``end`` = ``end`` } =
         { start = max v start
           ``end`` = ``end`` }
 
-let clampPartRange attr cmp v partRange =
-    match attr with
-    | X ->
-        let passRange, failRange = clampRange cmp v (partRange.xRng)
-        { partRange with xRng = passRange }, { partRange with xRng = failRange }
-    | M ->
-        let passRange, failRange = clampRange cmp v (partRange.mRng)
-        { partRange with mRng = passRange }, { partRange with mRng = failRange }
-    | A ->
-        let passRange, failRange = clampRange cmp v (partRange.aRng)
-        { partRange with aRng = passRange }, { partRange with aRng = failRange }
-    | S ->
-        let passRange, failRange = clampRange cmp v (partRange.sRng)
-        { partRange with sRng = passRange }, { partRange with sRng = failRange }
+let clampPartRange attr cmp v pr =
+    let passRng, failRng = Map.find attr pr |> clampRange cmp v
+    (Map.add attr passRng pr, Map.add attr failRng pr)
 
 let validRange rng =
     match rng with
@@ -150,7 +114,7 @@ let validRange rng =
     | _ -> false
 
 let validPartRange partRange =
-    List.forall validRange [ partRange.xRng; partRange.mRng; partRange.aRng; partRange.sRng ]
+    Map.forall (fun _ rng -> validRange rng) partRange
 
 let applyRuleRange rule rng =
     match rule with
@@ -184,15 +148,9 @@ let parseWorkflowLine s =
     | Success(f, _, _) -> f
     | _ -> failwith "parse error"
 
-let parsePartLine s =
-    match allMatches """\d+""" (fun m -> int m.Value) s |> Seq.toArray with
-    | [| x; m; a; s |] ->
-        { xRng = IntRange.Singleton x
-          mRng = IntRange.Singleton m
-          aRng = IntRange.Singleton a
-          sRng = IntRange.Singleton s }
-
-    | _ -> failwith "parse error"
+let parsePartLine s : PartRange =
+    let vals = allMatches """\d+""" (fun m -> int64 m.Value |> IntRange.Singleton) s
+    Seq.zip "xmas" vals |> Map
 
 let parseFile ls =
     match groupby ((<>) "") ls |> Seq.filter fst |> Seq.map snd |> Seq.toArray with
@@ -224,10 +182,10 @@ let runWorkflow m init =
     |> Seq.head
 
 let p1 m prs =
-    runWorkflow m prs |> Seq.map (snd >> fun rng -> rng.PartSum()) |> Seq.sum
+    runWorkflow m prs |> Seq.map (snd >> prSum) |> Seq.sum
 
 let p2 m init =
-    runWorkflow m init |> List.map (snd >> fun rng -> rng.Product()) |> List.sum
+    runWorkflow m init |> List.map (snd >> prProduct) |> List.sum
 
 [<EntryPoint>]
 let main args =
