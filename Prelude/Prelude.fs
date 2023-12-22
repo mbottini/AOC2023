@@ -30,3 +30,34 @@ module Prelude =
                 yield! zip xs' ys'
             }
         | _ -> Seq.empty
+
+    let rec zipLongest v xs ys =
+        match xs, ys with
+        | x :: xs', y :: ys' ->
+            seq {
+                yield (x, y)
+                yield! zipLongest v xs' ys'
+            }
+        | [], y :: ys' ->
+            seq {
+                yield (v, y)
+                yield! zipLongest v [] ys'
+            }
+        | x :: xs', [] ->
+            seq {
+                yield (x, v)
+                yield! zipLongest v xs' []
+            }
+        | _ -> Seq.empty
+
+    let pickOne xs =
+        let rec helper acc xs =
+            match xs with
+            | [] -> Seq.empty
+            | x :: xs' ->
+                seq {
+                    yield (x, List.rev acc @ xs')
+                    yield! helper (x :: acc) xs'
+                }
+
+        helper [] xs
